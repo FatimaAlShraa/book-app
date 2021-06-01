@@ -7,10 +7,14 @@ import { withAuth0 } from '@auth0/auth0-react';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import CardColumns from 'react-bootstrap/CardColumns';
-import BookForm from './bookForm'
+import BookForm from './bookForm';
+import UpdateBook from './updateForm';
 
+
+const server=process.env.REACT_SERVER
+console.log(server);
 class MyFavoriteBooks extends React.Component {
-
+  
   constructor(props) {
     super(props);
     this.state = {
@@ -19,12 +23,14 @@ class MyFavoriteBooks extends React.Component {
       showModal: false,
       bookName: '',
       description: '',
-      image_url: ''
+      image_url: '',
+      showUpdate: false,
+      index: 0,
+      
     }
   }
-
   componentDidMount = async () => {
-    const books = await axios.get('http://localhost:3001/books', { params: { email: this.props.auth0.user.email } })
+    const books = await axios.get(`http://localhost:3003/books`, { params: { email: this.props.auth0.user.email } })
     console.log('books', books.data)
     this.setState({
       books: books.data,
@@ -49,7 +55,7 @@ class MyFavoriteBooks extends React.Component {
       bookName: event.target.value,
 
     })
-    console.log(this.state.bookName);
+  
 
   }
   updateDescription = (event) => {
@@ -77,8 +83,8 @@ class MyFavoriteBooks extends React.Component {
       email: this.props.auth0.user.email
     }
 
-    const newBooks = await axios.post('http://localhost:3001/addBooks', bookFormData)
-
+    const newBooks = await axios.post(`http://localhost:3003/addBooks`, bookFormData)
+console.log(newBooks)
     this.setState({
       books: newBooks.data,
       showModal: false
@@ -90,13 +96,46 @@ class MyFavoriteBooks extends React.Component {
       email: this.props.auth0.user.email
     }
 
-    let newBooks = await axios.delete(`http://localhost:3001/deleteBook/${index}`, { params: email })
+    let newBooks = await axios.delete(`http://localhost:3003/deleteBook/${index}`, { params: email })
 
     this.setState({
       books: newBooks.data
     })
   }
 
+  updateBook = async (e) => {
+
+    const liberyData = {
+      name: this.state.bookName,
+      description: this.state.description,
+      image_url: this.state.image_url,
+      email: this.props.auth0.user.email
+
+    }
+
+    let updatesBook = await axios.put(`http://localhost:3003/updateBook/${this.state.index}`, liberyData)
+    this.setState({
+      books: updatesBook.data
+    })
+
+
+  }
+  updateModal = (idx) => {
+    const newBook = this.state.books.filter((val, index) => {
+      return idx === index;
+    })
+
+    console.log('before', newBook);
+    this.setState({
+      showUpdate: true,
+      index: idx,
+      name: newBook[0].name,
+      description: newBook[0].description,
+      image_url: newBook[0].image_url
+    })
+
+    
+  }
 
 
 
@@ -109,9 +148,10 @@ class MyFavoriteBooks extends React.Component {
           This is a collection of my favorite books
         </p>
 
-        <Button variant="primary" onClick={this.handleShowModal}>➕Add a Book</Button>
+        <Button variant="primary" onClick={this.handleShowModal}>Add</Button>
 
-        {this.state.showModal && <BookForm closeModalFx={this.handleCloseModal} showModal={this.state.showModal} updateBookName={this.updateBookName} updateDescription={this.updateDescription} updateImgUrl={this.updateImgUrl} addBooks={ this.addBooks} />}
+
+        {this.state.showModal && <BookForm closeModalFx={this.handleCloseModal} showModal={this.state.showModal} updateBookName={this.updateBookName} updateDescription={this.updateDescription} updateImgUrl={this.updateImgUrl} addBooks={this.addBooks} />}
 
         {this.state.showBooks &&
 
@@ -127,14 +167,27 @@ class MyFavoriteBooks extends React.Component {
                       <Card.Text style={{ overflow: 'auto', height: '5rem' }}>
                         {item.description}
                       </Card.Text>
-                      <Button variant="primary" onClick={() => this.deleteBook(idx)}>🗑️Delete</Button>
+                      <Button variant="primary" onClick={() => this.deleteBook(idx)}>🗑️</Button>
+                      <Button variant="primary" onClick={()=>this.updateModal(idx)}>Update🆙</Button>
+
                     </Card.Body>
                   </Card>
+                 
                 </div>
               )
-            })}
+            })
+            }
+
           </CardColumns>
         }
+
+        {this.state.showUpdate &&
+
+        <UpdateBook
+        showUpdate={this.state.showUpdate}
+            closeModalFx={this.handleCloseModal} showModal={this.updateModal} updateBookName={this.updateBookName} updateDescription={this.updateDescription} updateImgUrl={this.updateImgUrl} updateBook={this.updateBook}
+          /> 
+         }
       </Jumbotron>
     )
   }
